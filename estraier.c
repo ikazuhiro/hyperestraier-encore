@@ -7092,7 +7092,7 @@ static void est_idx_increment(ESTIDX *idx){
   assert(idx);
   min = INT_MAX;
   for(i = 0; i < idx->dnum; i++){
-    size = vlfsiz(idx->cdb);
+    size = vlfsiz(idx->dbs[i]);
     if(size < min) min = size;
   }
   if(idx->dnum >= ESTIDXDMAX || (idx->dnum >= ESTIDXDSTD && min < ESTIDXDBMAX)){
