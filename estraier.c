@@ -1818,6 +1818,7 @@ int est_db_optimize(ESTDB *db, int options){
         rp++;
         if(cbmapget(dmap, (char *)&id, sizeof(int), NULL)) CB_DATUMCAT(nval, pv, rp - pv);
       }
+      free(vbuf);
       if (!(CB_DATUMSIZE(nval) == vsiz && count == 1)) {
 	if(!est_idx_out(db->idxdb, word, wsiz)) err = TRUE;
 	if(CB_DATUMSIZE(nval) > 0){
@@ -1828,8 +1829,6 @@ int est_db_optimize(ESTDB *db, int options){
 	}
       }
       CB_DATUMCLOSE(nval);
-      free(vbuf);
-      free(kbuf);
       if(i % ESTCCCBFREQ == 0) est_db_inform(db, "cleaning dispensable keys");
     }
     CB_LISTCLOSE(words);
