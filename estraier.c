@@ -321,7 +321,7 @@ static int est_idx_add(ESTIDX *idx, const char *word, int wsiz,
 static int est_idx_put_one(ESTIDX *idx, int inum, const char *word, int wsiz,
                            const char *vbuf, int vsiz);
 static int est_idx_out(ESTIDX *idx, const char *word, int wsiz);
-static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode);
+static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode, int *count);
 static const char *est_idx_get_one(ESTIDX *idx, int inum, const char *word, int wsiz, int *sp);
 static int est_idx_vsiz(ESTIDX *idx, const char *word, int wsiz);
 static int est_idx_num(ESTIDX *idx);
@@ -1767,7 +1767,7 @@ int est_db_optimize(ESTDB *db, int options){
   ESTATTRIDX *attridx;
   const char *word, *rp, *pv, *ep;
   char *kbuf, *vbuf, *wp, numbuf[ESTNUMBUFSIZ];
-  int i, err, id, ksiz, vsiz, wsiz, len, vstep;
+  int i, err, id, ksiz, vsiz, wsiz, len, vstep, count;
   assert(db);
   if(!dpwritable(db->metadb)){
     est_set_ecode(&(db->ecode), ESTEACCES, __LINE__);
@@ -1793,7 +1793,7 @@ int est_db_optimize(ESTDB *db, int options){
     for(i = 0; i < CB_LISTNUM(words); i++){
       if(i % (ESTIDXDBLRM * 4) == 0) est_idx_set_current(db->idxdb);
       word = CB_LISTVAL2(words, i, wsiz);
-      vbuf = est_idx_scan(db->idxdb, word, wsiz, &vsiz, db->smode);
+      vbuf = est_idx_scan(db->idxdb, word, wsiz, &vsiz, db->smode, &count);
       CB_DATUMOPEN(nval);
       rp = vbuf;
       ep = vbuf + vsiz;
@@ -1818,12 +1818,14 @@ int est_db_optimize(ESTDB *db, int options){
         rp++;
         if(cbmapget(dmap, (char *)&id, sizeof(int), NULL)) CB_DATUMCAT(nval, pv, rp - pv);
       }
-      if(!est_idx_out(db->idxdb, word, wsiz)) err = TRUE;
-      if(CB_DATUMSIZE(nval) > 0){
-        if(!est_idx_add(db->idxdb, word, wsiz, CB_DATUMPTR(nval), CB_DATUMSIZE(nval), db->smode))
-          err = TRUE;
-      } else {
-        if(!vlout(db->fwmdb, word, wsiz)) err = TRUE;
+      if (!(CB_DATUMSIZE(nval) == vsiz && count == 1)) {
+	if(!est_idx_out(db->idxdb, word, wsiz)) err = TRUE;
+	if(CB_DATUMSIZE(nval) > 0){
+	  if(!est_idx_add(db->idxdb, word, wsiz, CB_DATUMPTR(nval), CB_DATUMSIZE(nval), db->smode))
+	    err = TRUE;
+	} else {
+	  if(!vlout(db->fwmdb, word, wsiz)) err = TRUE;
+	}
       }
       CB_DATUMCLOSE(nval);
       free(vbuf);
@@ -2042,7 +2044,7 @@ int est_db_merge(ESTDB *db, const char *name, int options){
   for(i = 0; i < CB_LISTNUM(words); i++){
     kbuf = CB_LISTVAL2(words, i, ksiz);
     seqmap = cbmapopenex(tsiz / sizeof(int) + 1);
-    tbuf = est_idx_scan(tgdb->idxdb, kbuf, ksiz, &tsiz, tgdb->smode);
+    tbuf = est_idx_scan(tgdb->idxdb, kbuf, ksiz, &tsiz, tgdb->smode, NULL);
     rp = tbuf;
     ep = tbuf + tsiz;
     while(rp < ep){
@@ -7183,16 +7185,19 @@ static int est_idx_out(ESTIDX *idx, const char *word, int wsiz){
    `smode' specifies a mode of score type.
    The return value is the pointer to the region of the value of the corresponding record.
    if no item correspongs, empty region is returned. */
-static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode){
+static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode, int *count){
   CBDATUM *datum;
   const char *vbuf;
-  int i, vsiz;
+  int i, vsiz, c = 0;
   assert(idx && word && wsiz >= 0 && sp);
   CB_DATUMOPEN(datum);
   for(i = 0; i < idx->dnum; i++){
-    if(!(vbuf = vlgetcache(idx->dbs[i], word, wsiz, &vsiz))) continue;
-    est_decode_idx_rec(datum, vbuf, vsiz, smode);
+    if((vbuf = vlgetcache(idx->dbs[i], word, wsiz, &vsiz))) {
+      est_decode_idx_rec(datum, vbuf, vsiz, smode);
+      c++;
+    }
   }
+  if(count) *count = c;
   return cbdatumtomalloc(datum, sp);
 }
 
@@ -8598,7 +8603,7 @@ static ESTSCORE *est_search_union(ESTDB *db, const char *term, int gstep,
         snext = cblistval(grams, j + 2, &mssiz);
         mfhash = fnext ? dpinnerhash(fnext, mfsiz) % ESTJHASHNUM + 1: 0xff;
         mshash = snext ? dpouterhash(snext, mssiz) % ESTJHASHNUM + 1: 0xff;
-        vbuf = est_idx_scan(db->idxdb, gram, gsiz, &vsiz, db->smode);
+        vbuf = est_idx_scan(db->idxdb, gram, gsiz, &vsiz, db->smode, NULL);
         if((cbuf = cbmapget(db->idxcc, gram, gsiz, &csiz)) != NULL){
           CB_REALLOC(vbuf, vsiz + csiz + 1);
           memcpy(vbuf + vsiz, cbuf, csiz);
