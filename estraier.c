@@ -414,6 +414,7 @@ static CBMAP *est_get_tvmap(ESTDB *db, int id, int vnum, int tfidf);
 static int est_url_sameness(const char *aurl, const char *burl);
 static void est_random_fclose(void);
 static int est_signal_dispatch(int signum);
+static size_t est_db_used_cache_size2(ESTDB *db);
 
 
 
@@ -1524,7 +1525,7 @@ int est_db_flush(ESTDB *db, int max){
     return TRUE;
   db->flsflag = TRUE;
   db->intflag = FALSE;
-  inc = est_db_used_cache_size(db) > db->icmax;
+  inc = est_db_used_cache_size2(db) > db->icmax;
   err = FALSE;
   CB_LISTOPEN(keys);
   cbmapiterinit(db->idxcc);
@@ -2336,7 +2337,8 @@ int est_db_put_doc(ESTDB *db, ESTDOC *doc, int options){
     }
   }
   db->dnum++;
-  if(est_db_used_cache_size(db) > db->icmax && !est_db_flush(db, INT_MAX)) err = TRUE;
+  if(est_db_used_cache_size2(db) > db->icmax && !est_db_flush(db, INT_MAX))
+    err = TRUE;
   return err ? FALSE : TRUE;
 }
 
@@ -4983,10 +4985,14 @@ int est_db_cache_num(ESTDB *db){
 
 
 /* Get the size of used cache region. */
-int est_db_used_cache_size(ESTDB *db){
+static size_t est_db_used_cache_size2(ESTDB *db){
   assert(db);
-  return (db->icsiz + (cbmaprnum(db->idxcc) + cbmaprnum(db->auxcc)) *
+  return ((size_t)db->icsiz + (cbmaprnum(db->idxcc) + cbmaprnum(db->auxcc)) *
           (sizeof(CBMAPDATUM) + ESTWORDAVGLEN)) * ESTMEMIRATIO;
+}
+
+int est_db_used_cache_size(ESTDB *db){
+  return est_db_used_cache_size2(db);
 }
 
 
@@ -7827,9 +7833,9 @@ static void est_db_inform(ESTDB *db, const char *info){
   char *msg;
   assert(db && info);
   if(!db->infocb) return;
-  msg = cbsprintf("%s: name=%s dnum=%d wnum=%d fsiz=%.0f crnum=%d csiz=%d dknum=%d",
+  msg = cbsprintf("%s: name=%s dnum=%d wnum=%d fsiz=%.0f crnum=%d csiz=%ld dknum=%d",
                   info, db->name, db->dnum, vlrnum(db->fwmdb), (double)est_db_size(db),
-                  cbmaprnum(db->idxcc) + cbmaprnum(db->auxcc), est_db_used_cache_size(db),
+                  cbmaprnum(db->idxcc) + cbmaprnum(db->auxcc), (long)est_db_used_cache_size2(db),
                   cbmaprnum(db->outcc));
   db->infocb(msg, db->infoop);
   free(msg);
