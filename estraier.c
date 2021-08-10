@@ -321,6 +321,7 @@ static int est_idx_add(ESTIDX *idx, const char *word, int wsiz,
 static int est_idx_put_one(ESTIDX *idx, int inum, const char *word, int wsiz,
                            const char *vbuf, int vsiz);
 static int est_idx_out(ESTIDX *idx, const char *word, int wsiz);
+static CBDATUM *est_idx_unite_records(CBDATUM *data[], int count, int smode);
 static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode, int *count);
 static const char *est_idx_get_one(ESTIDX *idx, int inum, const char *word, int wsiz, int *sp);
 static int est_idx_vsiz(ESTIDX *idx, const char *word, int wsiz);
@@ -7181,6 +7182,64 @@ static int est_idx_out(ESTIDX *idx, const char *word, int wsiz){
 }
 
 
+static CBDATUM *est_idx_unite_records(CBDATUM *data[], int count, int smode) {
+  int i, j, k = count, size, id[count], step[count], point[count];
+  CBDATUM *result;
+
+  for(i = 0, size = 0; i < k; i++) {
+    id[i] = -2;
+    point[i] = 0;
+    step[i] = 0;
+    size += CB_DATUMSIZE(data[i]);
+  }
+  CB_DATUMOPEN(result);
+  CB_DATUMSETSIZE(result, size);
+  CB_DATUMSETSIZE(result, 0);
+
+  while(1) {
+    for(i = 0; i < k; i++) {
+      if(id[i] == -2) {
+	if (point[i] >= CB_DATUMSIZE(data[i])) {
+	  id[i] = -1;
+	  count--;
+	} else {
+	  EST_READ_VNUMBUF(CB_DATUMPTR(data[i]) + point[i], id[i], step[i]);
+	  switch(smode){
+	  case ESTDFSCVOID:
+	    break;
+	  default:
+	    step[i]++;
+	    break;
+	  case ESTDFSCINT:
+	  case ESTDFSCASIS:
+	    step[i] += sizeof(int);
+	    break;
+	  }
+	  while(*(CB_DATUMPTR(data[i]) + point[i] + step[i]) != 0x00) {
+	    step[i] += 2;
+	  }
+	  step[i]++;
+	}
+      }
+    }
+    while(k > 0 && id[k - 1] == -1) k--;
+    if(count < 2) break;
+
+    for (i = 0, j = -1; i < k; i++)
+      if (id[i] != -1 && (j == -1 || id[j] > id[i]))
+	j = i;
+
+    CB_DATUMCAT(result, CB_DATUMPTR(data[j]) + point[j], step[j]);
+    point[j] += step[j];
+    id[j] = -2;
+  }
+
+  k--;
+  CB_DATUMCAT(result, CB_DATUMPTR(data[k]) + point[k],
+	      CB_DATUMSIZE(data[k]) - point[k]);
+  return result;
+}
+
 /* Get a record from the inverted index.
    `idx' specifies an object of the inverted index.
    `word' specifies a word.
@@ -7191,18 +7250,28 @@ static int est_idx_out(ESTIDX *idx, const char *word, int wsiz){
    The return value is the pointer to the region of the value of the corresponding record.
    if no item correspongs, empty region is returned. */
 static char *est_idx_scan(ESTIDX *idx, const char *word, int wsiz, int *sp, int smode, int *count){
-  CBDATUM *datum;
+  CBDATUM *datum, *data[idx->dnum];
   const char *vbuf;
   int i, vsiz, c = 0;
   assert(idx && word && wsiz >= 0 && sp);
-  CB_DATUMOPEN(datum);
+
   for(i = 0; i < idx->dnum; i++){
     if((vbuf = vlgetcache(idx->dbs[i], word, wsiz, &vsiz))) {
-      est_decode_idx_rec(datum, vbuf, vsiz, smode);
+      CB_DATUMOPEN(data[c]);
+      est_decode_idx_rec(data[c], vbuf, vsiz, smode);
       c++;
     }
   }
-  if(count) *count = c;
+  if (count) *count = c;
+  switch (c) {
+  case 0:
+    CB_DATUMOPEN(data[0]);
+  case 1:
+    return cbdatumtomalloc(data[0], sp);
+  }
+
+  datum = est_idx_unite_records(data, c, smode);
+  for(i = 0; i < c; i++) CB_DATUMCLOSE(data[i]);
   return cbdatumtomalloc(datum, sp);
 }
 
