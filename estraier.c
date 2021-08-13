@@ -155,6 +155,8 @@
 #define ESTSMLRMNUM    4096              /* maximum number of candidates to be checked */
 #define ESTSMLRNMIN    0.5               /* the minimum value for narrowing */
 
+#define ESTOPTFLUSHTHRESHOLD	(16 * 1024 * 1204)
+
 /* set a buffer for a variable length number */
 #define EST_SET_VNUMBUF(EST_len, EST_buf, EST_num) \
   do { \
@@ -314,7 +316,7 @@ static ESTIDX *est_idx_open(const char *name, int omode, int dnum);
 static int est_idx_close(ESTIDX *idx);
 static void est_idx_set_tuning(ESTIDX *idx, int lrecmax, int nidxmax, int lcnum, int ncnum,
                                int fbpsiz);
-static void est_idx_increment(ESTIDX *idx);
+static void est_idx_increment(ESTIDX *idx, int force);
 static int est_idx_dnum(ESTIDX *idx);
 static int est_idx_add(ESTIDX *idx, const char *word, int wsiz,
                        const char *vbuf, int vsiz, int smode);
@@ -1554,7 +1556,7 @@ int est_db_flush(ESTDB *db, int max){
       est_db_inform(db, "flushing index words");
       if(est_idx_size_current(db->idxdb) >= ESTIDXDBMAX){
         est_db_inform(db, "adding a new database file");
-        est_idx_increment(db->idxdb);
+        est_idx_increment(db->idxdb, 0);
         inc = FALSE;
       }
     }
@@ -1694,7 +1696,7 @@ int est_db_flush(ESTDB *db, int max){
   db->kcmnum = ESTKEYCCMNUM;
   if(!(max > 0 && db->intflag) && inc && est_idx_size_current(db->idxdb) >= ESTIDXDBMIN){
     est_db_inform(db, "adding a new database file");
-    est_idx_increment(db->idxdb);
+    est_idx_increment(db->idxdb, 0);
   }
   if(max < 1 || max >= INT_MAX){
     if(!vlmemflush(db->auxdb)) err = TRUE;
@@ -1825,8 +1827,12 @@ int est_db_optimize(ESTDB *db, int options){
       if (!(CB_DATUMSIZE(nval) == vsiz && count == 1)) {
 	if(!est_idx_out(db->idxdb, word, wsiz)) err = TRUE;
 	if(CB_DATUMSIZE(nval) > 0){
+	  if (CB_DATUMSIZE(nval) > ESTOPTFLUSHTHRESHOLD)
+	    vlmemsync(db->idxdb->cdb);
 	  if(!est_idx_add(db->idxdb, word, wsiz, CB_DATUMPTR(nval), CB_DATUMSIZE(nval), db->smode))
 	    err = TRUE;
+	  if (CB_DATUMSIZE(nval) > ESTOPTFLUSHTHRESHOLD)
+	    vlmemsync(db->idxdb->cdb);
 	} else {
 	  if(!vlout(db->fwmdb, word, wsiz)) err = TRUE;
 	}
@@ -2101,7 +2107,7 @@ int est_db_merge(ESTDB *db, const char *name, int options){
       est_db_inform(db, "importing words");
       if(est_idx_size_current(db->idxdb) >= ESTIDXDBMAX){
         est_db_inform(db, "adding a new database file");
-        est_idx_increment(db->idxdb);
+        est_idx_increment(db->idxdb, 0);
       }
     }
   }
@@ -7099,7 +7105,7 @@ static void est_idx_set_tuning(ESTIDX *idx, int lrecmax, int nidxmax, int lcnum,
 
 /* Increment the inverted index.
    `idx' specifies an object of the inverted index. */
-static void est_idx_increment(ESTIDX *idx){
+static void est_idx_increment(ESTIDX *idx, int force){
   char path[ESTPATHBUFSIZ];
   int i, min, size, crdnum;
   assert(idx);
@@ -7108,7 +7114,8 @@ static void est_idx_increment(ESTIDX *idx){
     size = vlfsiz(idx->dbs[i]);
     if(size < min) min = size;
   }
-  if(idx->dnum >= ESTIDXDMAX || (idx->dnum >= ESTIDXDSTD && min < ESTIDXDBMAX)){
+  if(idx->dnum >= ESTIDXDMAX ||
+     (idx->dnum >= ESTIDXDSTD && min < ESTIDXDBMAX && !force)){
     est_idx_set_current(idx);
     return;
   }
@@ -7142,13 +7149,27 @@ static int est_idx_add(ESTIDX *idx, const char *word, int wsiz,
                        const char *vbuf, int vsiz, int smode){
   CBDATUM *datum;
   const char *obuf;
-  int rv, lid, osiz;
+  int rv, lid, llid, osiz;
   assert(idx && word && wsiz >= 0 && vbuf && vsiz >= 0);
   CB_DATUMOPEN(datum);
-  lid = 0;
-  if((obuf = vlgetcache(idx->cdb, word, wsiz, &osiz)) != NULL)
-    lid = est_idx_rec_last_id(obuf, osiz, smode);
+
+  if(est_idx_size_current(idx) > ESTIDXDBMAX) est_idx_increment(idx, 0);
+  lid = (obuf = vlgetcache(idx->cdb, word, wsiz, &osiz)) ?
+    est_idx_rec_last_id(obuf, osiz, smode) : 0;
   est_encode_idx_rec(datum, vbuf, vsiz, lid, smode);
+  if((size_t)wsiz + (size_t)CB_DATUMSIZE(datum) + (size_t)(obuf ? osiz : 0)
+     + (size_t)est_idx_size_current(idx) > (size_t)ESTIDXDBMAX) {
+    llid = lid;
+    est_idx_increment(idx, 1);
+    /* est_idx_increment() may not create a new index file. */
+    lid = (obuf = vlgetcache(idx->cdb, word, wsiz, &osiz)) ?
+      est_idx_rec_last_id(obuf, osiz, smode) : 0;
+    if(llid != lid) {
+      CB_DATUMSETSIZE(datum, 0);
+      est_encode_idx_rec(datum, vbuf, vsiz, lid, smode);
+    }
+  }
+
   rv = vlput(idx->cdb, word, wsiz, CB_DATUMPTR(datum), CB_DATUMSIZE(datum), VL_DCAT);
   CB_DATUMCLOSE(datum);
   return rv;
