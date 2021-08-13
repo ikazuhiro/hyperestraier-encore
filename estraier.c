@@ -1663,6 +1663,7 @@ int est_db_flush(ESTDB *db, int max){
               }
               rp++;
               if(!cbmapget(ids, (char *)&cid, sizeof(int), NULL)){
+		assert(cid - lid - 1 >= 0);
                 EST_SET_VNUMBUF(vstep, numbuf, cid - lid - 1);
                 CB_DATUMCAT(nval, numbuf, vstep);
                 CB_DATUMCAT(nval, pv, rp - pv);
@@ -2080,6 +2081,7 @@ int est_db_merge(ESTDB *db, const char *name, int options){
     qsort(ary, anum, sizeof(int), est_int_compare);
     CB_DATUMOPEN(rbuf);
     for(j = 0; j < anum; j++){
+      assert(ary[j] >= 0);
       EST_SET_VNUMBUF(vstep, numbuf, ary[j]);
       CB_DATUMCAT(rbuf, numbuf, vstep);
       vbuf = cbmapget(seqmap, (char *)(ary + j), sizeof(int), &vsiz);
@@ -2263,6 +2265,7 @@ int est_db_put_doc(ESTDB *db, ESTDOC *doc, int options){
     CB_MAPITERVAL(vbuf, kbuf, vsiz);
     if(vsiz > 2) qsort((void *)vbuf, vsiz / 2, 2, est_short_compare);
     CB_DATUMOPEN(ocbuf);
+    assert(doc->id >= 0);
     EST_SET_VNUMBUF(wsiz, wbuf, doc->id);
     CB_DATUMCAT(ocbuf, wbuf, wsiz);
     switch(db->smode){
@@ -6964,6 +6967,7 @@ static void est_encode_idx_rec(CBDATUM *datum, const char *vbuf, int vsiz, int l
       rp += 2;
     }
     rp++;
+    assert(cid - lid - 1 >= 0);
     EST_SET_VNUMBUF(vstep, nbuf, cid - lid - 1);
     CB_DATUMCAT(datum, nbuf, vstep);
     CB_DATUMCAT(datum, sp, rp - sp);
@@ -7005,6 +7009,7 @@ static void est_decode_idx_rec(CBDATUM *datum, const char *vbuf, int vsiz, int s
       rp += 2;
     }
     rp++;
+    assert(cid >= 0);
     EST_SET_VNUMBUF(vstep, nbuf, cid);
     CB_DATUMCAT(datum, nbuf, vstep);
     CB_DATUMCAT(datum, sp, rp - sp);
