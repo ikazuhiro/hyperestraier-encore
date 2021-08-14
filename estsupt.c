@@ -207,7 +207,7 @@ static int realmain(int argc, char **argv){
     printf("\r\n");
     printf("The clients are too busy now (%f).\n", failrate);
   } else if(*g_tmpdir != '\0' && (rp = getenv("PATH_INFO")) != NULL && *rp == '/' &&
-            (++rp) != '\0' && !strchr(rp, '/') && !strchr(rp, '\\') &&
+            *(++rp) != '\0' && !strchr(rp, '/') && !strchr(rp, '\\') &&
             strcmp(rp, ESTCDIRSTR) && strcmp(rp, ESTPDIRSTR)){
     /* save cache data */
     savecache(rp);
