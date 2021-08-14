@@ -101,7 +101,7 @@ done:
 void log_print(int level, const char *format, ...){
   va_list ap, aq;
   const char *lvstr;
-  char *date;
+  char *date = NULL;
   if(level < log_level) return;
   if(pthread_mutex_lock(&log_mutex) != 0) return;
   va_start(ap, format);
@@ -823,11 +823,10 @@ int nmgr_out(NMGR *nmgr, const char *name){
   NODE *node;
   const char *vbuf;
   char pbuf[URIBUFSIZ];
-  int err, ecode;
+  int ecode;
   assert(nmgr && name);
   log_print(LL_DEBUG, "nmgr_out: %s", name);
   if(!(vbuf = cbmapget(nmgr->nodes, name, -1, NULL))) return FALSE;
-  err = FALSE;
   node = (NODE *)vbuf;
   pthread_mutex_destroy(&(node->mutex));
   cbmapclose(node->links);
@@ -837,12 +836,10 @@ int nmgr_out(NMGR *nmgr, const char *name){
   free(node->name);
   if(!est_mtdb_close(node->db, &ecode)){
     log_print(LL_ERROR, "DB-ERROR: %s", est_err_msg(ecode));
-    err = TRUE;
   }
   sprintf(pbuf, "%s%c%s%c%s", nmgr->rootdir, ESTPATHCHR, NODEDIR, ESTPATHCHR, name);
   if(!est_rmdir_rec(pbuf)){
     log_print(LL_ERROR, "could not remove a directory");
-    err = TRUE;
   }
   cbmapout(nmgr->nodes, name, -1);
   return TRUE;

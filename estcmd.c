@@ -694,11 +694,10 @@ static int runuriid(int argc, char **argv){
 /* parse arguments of the meta command */
 static int runmeta(int argc, char **argv){
   char *dbname, *mname, *mvalue;
-  int i, del, rv;
+  int i, rv;
   dbname = NULL;
   mname = NULL;
   mvalue = NULL;
-  del = FALSE;
   for(i = 2; i < argc; i++){
     if(!dbname && argv[i][0] == '-'){
       usage();
@@ -3286,7 +3285,6 @@ static int procregression(const char *dbname){
   ESTCOND *cond, *ncond;
   ESTRESMAPELEM *elems;
   CBMAP *hints, *rmap;
-  const int *ary;
   char numbuf[NUMBUFSIZ];
   int i, ecode, err, *res, rnum, anum, onum;
   time_t curtime;
@@ -3584,7 +3582,7 @@ static int procregression(const char *dbname){
     res = est_db_search(db, cond, &rnum, NULL);
     ncond = est_cond_dup(cond);
     for(i = 0; i < rnum; i++){
-      ary = est_cond_shadows(ncond, res[i], &anum);
+      est_cond_shadows(ncond, res[i], &anum);
       if(anum < 1){
         printferror("%s: condition object duplication failed", dbname);
         err = TRUE;

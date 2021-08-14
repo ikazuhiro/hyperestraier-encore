@@ -2421,27 +2421,24 @@ static void *searchlocal(void *targ){
 static void *searchremote(void *targ){
   REQUEST *req;
   ESTCOND *cond;
-  NODE *node;
   RESMAP *resmap;
   ESTNODE *tnode;
   ESTNODERES *nres;
   CBMAP *hints, *attrs, *myhints, *whints;
   CBLIST *list;
-  const char *myurl, *url, *label, *vbuf, *pv;
+  const char *myurl, *url, *vbuf, *pv;
   char numbuf[NUMBUFSIZ], *snippet;
   int i, max, credit, depth, wwidth, hwidth, awidth, len, cnt, score;
   double curtime;
   req = ((TARGRMSRCH *)targ)->req;
   myurl = ((TARGRMSRCH *)targ)->myurl;
   cond = ((TARGRMSRCH *)targ)->cond;
-  node = ((TARGRMSRCH *)targ)->node;
   hints = ((TARGRMSRCH *)targ)->hints;
   max = ((TARGRMSRCH *)targ)->max;
   if(max < RMSRCHRESMIN) max = RMSRCHRESMIN;
   est_cond_set_max(cond, max);
   resmap = ((TARGRMSRCH *)targ)->resmap;
   url = ((TARGRMSRCH *)targ)->url;
-  label = ((TARGRMSRCH *)targ)->label;
   credit = ((TARGRMSRCH *)targ)->credit;
   depth = ((TARGRMSRCH *)targ)->depth;
   wwidth = ((TARGRMSRCH *)targ)->wwidth;

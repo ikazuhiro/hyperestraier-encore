@@ -6910,7 +6910,7 @@ static char *est_strstr_sparse(const char *haystack, const char *needle){
    `smode' specifies a mode of score type.
    The return value is the last ID number in a record. */
 static int est_idx_rec_last_id(const char *vbuf, int vsiz, int smode){
-  const char *rp, *ep, *sp;
+  const char *rp, *ep;
   int cid, vnum, vstep;
   assert(vbuf && vsiz >= 0);
   cid = 0;
@@ -6920,7 +6920,6 @@ static int est_idx_rec_last_id(const char *vbuf, int vsiz, int smode){
     EST_READ_VNUMBUF(rp, vnum, vstep);
     cid += vnum + 1;
     rp += vstep;
-    sp = rp;
     switch(smode){
     case ESTDFSCVOID:
       break;
@@ -9362,7 +9361,7 @@ static ESTSCORE *est_search_pidxs(ESTDB *db, ESTCOND *cond, ESTSCORE *scores, in
                                   CBMAP *ordattrs){
   ESTCATTR *list;
   ESTDOC *doc;
-  const char *otype, *lbuf, *vbuf;
+  const char *lbuf, *vbuf;
   char *oname, *wp;
   int i, j, k, snum, anum, id, hit, sc, miss, lsiz, vsiz;
   double avg, sd, dif, tune;
@@ -9379,17 +9378,14 @@ static ESTSCORE *est_search_pidxs(ESTDB *db, ESTCOND *cond, ESTSCORE *scores, in
     }
   }
   oname = NULL;
-  otype = NULL;
   if(cond->order){
     oname = cbmemdup(cond->order, -1);
     cbstrtrim(oname);
-    otype = ESTORDSTRA;
     if((wp = strchr(oname, ' ')) != NULL){
       *(wp++) = '\0';
       while(*wp == ' '){
         wp++;
       }
-      otype = wp;
     }
   }
   list = NULL;

@@ -90,11 +90,10 @@ static void usage(void){
 /* parse arguments of the inform command */
 static int runinform(int argc, char **argv){
   const char *dbname, *outfile;
-  int rv;
   if(argc < 4) usage();
   dbname = argv[2];
   outfile = argv[3];
-  rv = procinform(dbname, outfile);
+  procinform(dbname, outfile);
   return 0;
 }
 
