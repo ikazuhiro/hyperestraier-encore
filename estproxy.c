@@ -30,10 +30,10 @@
 #define SOCKBUFSIZ     8192              /* size of the socket buffer */
 #define MINIBNUM       31                /* bucket number of map for trivial use */
 
-#define DRAFTCMD       "[DRAFT]"         /* built-in command for document draft */
-#define TEXTCMD        "[TEXT]"          /* built-in command for plain text */
-#define HTMLCMD        "[HTML]"          /* built-in command for HTML */
-#define MIMECMD        "[MIME]"          /* built-in command for MIME */
+static const char *DRAFTCMD = "[DRAFT]";         /* built-in command for document draft */
+static const char *TEXTCMD  = "[TEXT]";          /* built-in command for plain text */
+static const char *HTMLCMD  = "[HTML]";          /* built-in command for HTML */
+static const char *MIMECMD  = "[MIME]";          /* built-in command for MIME */
 
 
 /* global variables for configurations */

@@ -55,10 +55,6 @@
 #define TRACEDNUM      3                 /* division number of the trace database */
 
 #define DATTRDEPTH     "_depth"          /* name of the attribute of the depth */
-#define DRAFTCMD       "[DRAFT]"         /* built-in command for document draft */
-#define TEXTCMD        "[TEXT]"          /* built-in command for plain text */
-#define HTMLCMD        "[HTML]"          /* built-in command for HTML */
-#define MIMECMD        "[MIME]"          /* built-in command for MIME */
 
 enum {                                   /* enumeration for initializing options */
   WI_PERFNG = 1 << 10,                   /* use perfect N-gram analyzer */

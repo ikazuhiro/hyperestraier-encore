@@ -17,6 +17,11 @@
 #include "wavermod.h"
 
 
+static const char *DRAFTCMD = "[DRAFT]";         /* built-in command for document draft */
+static const char *TEXTCMD  = "[TEXT]";          /* built-in command for plain text */
+static const char *HTMLCMD  = "[HTML]";          /* built-in command for HTML */
+static const char *MIMECMD  = "[MIME]";          /* built-in command for MIME */
+
 /* private function prototypes */
 static void log_close(void);
 static void db_informer(const char *message, void *opaque);
