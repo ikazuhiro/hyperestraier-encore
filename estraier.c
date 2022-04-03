@@ -418,6 +418,7 @@ static int est_url_sameness(const char *aurl, const char *burl);
 static void est_random_fclose(void);
 static int est_signal_dispatch(int signum);
 static size_t est_db_used_cache_size2(ESTDB *db);
+static int est_get_vlcomp_flag(int *f);
 
 
 
@@ -984,7 +985,9 @@ ESTDB *est_db_open(const char *name, int omode, int *ecp){
     domode = DP_OWRITER;
     comode = CR_OWRITER;
     vomode = VL_OWRITER;
-    if(ESTUSEBZIP){
+    if (est_get_vlcomp_flag(&i) == 0){
+      vomode |= i;
+    } else if(ESTUSEBZIP){
       vomode |= VL_OXCOMP;
     } else if(ESTUSELZO){
       vomode |= VL_OYCOMP;
@@ -1397,7 +1400,9 @@ int est_db_add_attr_index(ESTDB *db, const char *name, int type){
   free(enc);
   domode = DP_OWRITER | DP_OCREAT | DP_OTRUNC;
   vomode = VL_OWRITER | VL_OCREAT | VL_OTRUNC;
-  if(ESTUSEBZIP){
+  if (est_get_vlcomp_flag(&i) == 0){
+    vomode |= i;
+  } else if(ESTUSEBZIP){
     vomode |= VL_OXCOMP;
   } else if(ESTUSELZO){
     vomode |= VL_OYCOMP;
@@ -10571,6 +10576,28 @@ static int est_signal_dispatch(int signum){
   if(est_signal_handlers[signum]) est_signal_handlers[signum](signum);
   return TRUE;
 #endif
+}
+
+/* get compression methods by "ESTDB_COMP" envirinmental variable. */
+static int est_get_vlcomp_flag(int *f) {
+  char *value = getenv ("ESTDB_COMP");
+
+  if (value) {
+    if(ESTUSEBZIP && !strcasecmp(value, "bzip2")){
+      *f = VL_OXCOMP;
+    } else if(ESTUSELZO && !strcasecmp(value, "lzo")){
+      *f = VL_OYCOMP;
+    } else if(ESTUSEZLIB && !strcasecmp(value, "zlib")){
+      *f = VL_OZCOMP;
+    } else if (!strcasecmp(value, "none")) {
+      *f = 0;
+    } else {
+      return -1;
+    }
+    return 0;
+  }
+
+  return -1;
 }
 
 
