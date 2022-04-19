@@ -179,9 +179,9 @@
 #include <fcntl.h>
 #include <utime.h>
 #include <direct.h>
+#include <winsock2.h>
 #include <windows.h>
 #include <io.h>
-#include <winsock2.h>
 
 #elif defined(_SYS_MINGW_)
 
@@ -191,9 +191,9 @@
 #include <fcntl.h>
 #include <utime.h>
 #include <dirent.h>
+#include <winsock2.h>
 #include <windows.h>
 #include <io.h>
-#include <winsock2.h>
 
 #elif defined(_SYS_CYGWIN_)
 

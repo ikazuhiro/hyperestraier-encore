@@ -567,9 +567,9 @@ uninstall-hpux :
 
 
 win :
-	make CC="gcc -mno-cygwin" MYBINS="$(MYBINS) estmaster-sv" MYLIBS="$(MYWINLIBS)" \
+	make CC="gcc" MYBINS="$(MYBINS) estmaster-sv" MYLIBS="$(MYWINLIBS)" \
 	  CFLAGS="-Wall -fsigned-char -O0 -DNDEBUG" LIBS="-lqdbm -lz -liconv -lregex" \
-	  MTLIBS="-lpthreadGC2" SKLIBS="-lws2_32"
+	  MTLIBS="-lwinpthread" SKLIBS="-lws2_32"
 
 
 winpkg :

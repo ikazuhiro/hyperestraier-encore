@@ -14,11 +14,13 @@
  *************************************************************************************************/
 
 #include <stdio.h>
-#include <netinet/tcp.h>
 #include "estraier.h"
 #include "estmtdb.h"
 #include "estnode.h"
 #include "myconf.h"
+#if !(defined(_SYS_MSVC_) || defined(_SYS_MINGW_))
+#include <netinet/tcp.h>
+#endif
 
 #if defined(_SYS_MSVC_) || defined(_SYS_MINGW_)
 #define socklen_t       int
