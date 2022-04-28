@@ -1199,8 +1199,12 @@ int be_daemon(const char *curdir){
 
 
 /* Close the log file. */
+/* May be called multiple times. */
 static void log_close(void){
-  if(log_fp) fclose(log_fp);
+  if(log_fp){
+    fclose(log_fp);
+    log_fp = NULL;
+  }
 }
 
 
